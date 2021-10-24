@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import com.google.android.material.chip.Chip;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -44,19 +45,27 @@ public class MainActivity extends AppCompatActivity {
 
     protected void addOp(String s){
         addSymbol(s);
-        StringBuilder sb = new StringBuilder();
-        for (String n : numList){
-            sb.append(n);
-        }
-        Log.d("OPS", sb.toString());
-        list.add(sb.toString());
+        commitNumber();
         list.add(s);
-        numList.clear();
+
+    }
+
+    protected void commitNumber(){
+        if(numList.size()>0) {
+            StringBuilder sb = new StringBuilder();
+            for (String n : numList) {
+                sb.append(n);
+            }
+            Log.d("OPS", sb.toString());
+            list.add(sb.toString());
+            numList.clear();
+        }
     }
 
     protected void clear(){
         textView.setText("0");
         list.clear();
+        numList.clear();
     }
 
     protected void back(){
@@ -103,101 +112,52 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    protected String solve(List<String> list){
-        StringBuilder sb = new StringBuilder();
-        for (String n : numList){
-            sb.append(n);
-        }
-        Log.d("OPS", sb.toString());
-        list.add(sb.toString());
+    protected Double solve(){
 
-        List<List<String>> opPriority = new LinkedList<>();
-        List<String> par = new LinkedList<>();
-        par.add("("); par.add("sin("); par.add("cos("); par.add("tan(");
-        List<String> mult = new LinkedList<>();
-        mult.add("×"); mult.add("÷");
-        List<String> sum = new LinkedList<>();
-        sum.add("+"); sum.add("-");
-        opPriority.add(mult); opPriority.add(sum);
+        try {
 
 
-        String foundOp = null;
-        Integer opPos = null;
+            Double currNum1 = null;
+            String currOp = null;
+            Double currNum2 = null;
 
-        for (int i = 0; i<list.size();i++) {
-            if(foundOp == null) {
-                for (String op : par) {
-                    if (list.get(i).equals(op)) {
-                        foundOp = op;
-                        opPos = i;
+            for (String item : list) {
+                if (item.equals("+") || item.equals("-") || item.equals("×") || item.equals("÷")) {
+                    currOp = item;
+                } else {
+                    if (currNum1 == null) {
+                        currNum1 = Double.parseDouble(item);
+                    } else {
+                        currNum2 = Double.parseDouble(item);
+                        currNum1 = doOp(currNum1, currOp, currNum2);
+
+                        currOp = null;
+                        currNum2 = null;
                     }
                 }
             }
-            else{
-                if(list.get(i).equals(")")){
-                    List<String> l = list.subList(opPos+1,i);
-                    String res = null;
-                    if(l.size() > 1){
-                        solve(l);
-                    }
-                    else {
-                        switch (foundOp) {
-                            case "sin(":
-                                res = Double.toString(Math.sin(Double.parseDouble(l.get(0))));
-                                break;
-                            case "cos(":
-                                res = Double.toString(Math.cos(Double.parseDouble(l.get(0))));
-                                break;
-                            case "tan(":
-                                res = Double.toString(Math.tan(Double.parseDouble(l.get(0))));
-                                break;
-                            default:
-                                res = l.get(0);
-                                break;
-                        }
-                    }
-                    List<String> li = new LinkedList<>();
-                    li.addAll(list.subList(0,opPos));
-                    li.add(res);
-                    li.addAll(list.subList(i+1, list.size()));
-                    if(li.size()==1) return li.get(0);
-                    else solve(li);
-                }
-            }
-        }
 
-        for(List<String> ops : opPriority) {
-            for (int i = 0; i< list.size(); i++) {
-                for(String op : ops){
-                    if (list.get(i).equals(op)){
-                        String res = null;
-                        switch (op){
-                            case "×":
-                                res = Double.toString(Double.parseDouble(list.get(i-1)) * Double.parseDouble(list.get(i+1)));
-                                break;
-                            case "÷":
-                                res = Double.toString(Double.parseDouble(list.get(i-1)) / Double.parseDouble(list.get(i+1)));
-                                break;
-                            case "+":
-                                res = Double.toString(Double.parseDouble(list.get(i-1)) + Double.parseDouble(list.get(i+1)));
-                                break;
-                            case "-":
-                                res = Double.toString(Double.parseDouble(list.get(i-1)) - Double.parseDouble(list.get(i+1)));
-                                break;
-                        }
-                        List<String> li = new LinkedList<>();
-                        li.addAll(list.subList(0, i-1));
-                        li.add(res);
-                        if(i+2< list.size())
-                        li.addAll(list.subList(i+2, list.size()-1));
-                        if(li.size()==1) return li.get(0);
-                        else solve(li);
-                    }
-                }
-
-            }
+            return currNum1;
+        }catch (NumberFormatException e){
+            clear();
+            return 0d;
         }
-        return "";
+    }
+
+    private Double doOp(Double num1, String op, Double num2) {
+        switch (op){
+            case "+":
+                return num1 + num2;
+            case "-":
+                return num1 - num2;
+            case "×":
+                return num1 * num2;
+            case "÷":
+                return num1 / num2;
+            default:
+                Log.d("OPS", "Unknown operation");
+                return null;
+        }
 
     }
 
@@ -249,9 +209,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void equal_click(View v){
-       String res = solve(this.list);
+        commitNumber();
+       Double res = solve();
        clear();
-       addNumber(res);
+       addNumber(res.toString());
     }
 
     public void sum_click(View v){
@@ -271,24 +232,35 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void sin_click(View v){
-        addOp(getString(R.string.sin) + "(");
+        commitNumber();
+        Double res = solve();
+        clear();
+        if(isDegree) res = res * (2 * Math.PI) / 360;
+        res = Math.sin(res);
+        addNumber(res.toString());
+
+
     }
 
     public void cos_click(View v){
-        addOp(getString(R.string.cos) + "(");
+        commitNumber();
+        Double res = solve();
+        clear();
+        if(isDegree) res = res * (2 * Math.PI) / 360;
+        res = Math.cos(res);
+        addNumber(res.toString());
     }
 
     public void tan_click(View v){
-        addOp(getString(R.string.tan) + "(");
+        commitNumber();
+        Double res = solve();
+        clear();
+        if(isDegree) res = res * (2 * Math.PI) / 360;
+        res = Math.tan(res);
+        addNumber(res.toString());
     }
 
-    public void open_parentesis_click(View v){
-        addOp(getString(R.string.open_parentesis));
-    }
 
-    public void close_parentesis_click(View v){
-        addOp(getString(R.string.close_parentesis));
-    }
 
     public void clear_click(View v){
         clear();
